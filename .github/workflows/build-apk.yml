@@ -45,8 +45,13 @@ jobs:
           # （Gradle 8.5 才正式支持 JDK 21）。用 21 会构建失败。
           java-version: '17'
 
-      - name: 配置 Android SDK
+        - name: 配置 Android SDK
+        id: android_sdk
+        continue-on-error: true
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
 
       - name: 安装依赖
         run: npm ci
