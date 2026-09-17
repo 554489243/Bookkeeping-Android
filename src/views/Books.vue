@@ -77,7 +77,14 @@
       <div class="modal-content">
         <div class="form-section">
           <label class="form-label">名称</label>
-          <input v-model="formName" class="form-input" placeholder="如：国庆旅游" maxlength="15" />
+          <input
+            ref="nameInputRef"
+            v-model="formName"
+            @compositionend="syncNameFromDom"
+            class="form-input"
+            placeholder="如：国庆旅游"
+            maxlength="15"
+          />
         </div>
         <div class="form-section">
           <label class="form-label">图标</label>
@@ -87,7 +94,7 @@
               :key="icon"
               class="icon-option"
               :class="{ selected: formIcon === icon }"
-              @click="formIcon = icon"
+              @click="selectIcon(icon)"
             >{{ icon }}</div>
           </div>
         </div>
@@ -100,7 +107,7 @@
               class="color-option"
               :class="{ selected: formColor === color }"
               :style="{ background: color }"
-              @click="formColor = color"
+              @click="selectColor(color)"
             >
               <van-icon v-if="formColor === color" name="success" size="16" color="#fff" />
             </div>
@@ -129,6 +136,7 @@ const editingBook = ref<Book | null>(null)
 const formName = ref('')
 const formIcon = ref('📱')
 const formColor = ref('#1989fa')
+const nameInputRef = ref<HTMLInputElement | null>(null)
 
 // 拖拽状态
 const draggingId = ref<number | null>(null)
@@ -161,6 +169,27 @@ function getBookRecordCount(bookId: number) {
   return recordStore.records.filter(r => r.bookId === bookId).length
 }
 
+// 部分 Android WebView / 输入法组合下，v-model 可能收不到 input 事件，
+// 导致 DOM 有值而 formName 仍为空。选中图标/颜色会触发重渲染，
+// 于是空值被回写、输入框内容消失（"选了图标名字就没了"）。
+// 这里在改动会触发重渲染的状态前，先从 DOM 补一次同步。
+function syncNameFromDom() {
+  const domVal = nameInputRef.value?.value
+  if (domVal !== undefined && domVal !== formName.value) {
+    formName.value = domVal
+  }
+}
+
+function selectIcon(icon: string) {
+  syncNameFromDom()
+  formIcon.value = icon
+}
+
+function selectColor(color: string) {
+  syncNameFromDom()
+  formColor.value = color
+}
+
 function editBook(book: Book) {
   if (book.isDefault) return
   editingBook.value = book
@@ -179,6 +208,9 @@ function closeModal() {
 }
 
 async function saveBook() {
+  // 兜底：保存前从 DOM 补一次同步，避免输入法未派发 input 事件时误判为空
+  syncNameFromDom()
+
   if (!formName.value.trim()) {
     showToast('请输入账本名称')
     return

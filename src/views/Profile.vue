@@ -29,7 +29,7 @@
         </div>
         <div class="menu-item" @click="handleImport">
           <div class="icon">📥</div>
-          <div class="label">导入数据<a class="import-link" @click.stop="openInBrowser">无反应?浏览器打开</a></div>
+          <div class="label">导入数据<a v-if="!isNative" class="import-link" @click.stop="openInBrowser">无反应?浏览器打开</a></div>
           <div class="arrow">›</div>
         </div>
         <div class="menu-item" @click="handleArchive">
@@ -56,14 +56,14 @@
           <div class="label">用户手册</div>
           <div class="arrow">›</div>
         </div>
-        <div class="menu-item" @click="showToast('记账本 v1.3.1\nVue3 + Vant4 + Dexie.js')">
+        <div class="menu-item" @click="showToast('记账本 v1.3.2\nVue3 + Vant4 + Dexie.js')">
           <div class="icon">ℹ️</div>
           <div class="label">关于</div>
           <div class="arrow">›</div>
         </div>
       </div>
 
-      <div class="version-tag">v1.3.1 · Vue3 + Vant4 + Dexie.js</div>
+      <div class="version-tag">v1.3.2 · Vue3 + Vant4 + Dexie.js</div>
     </div>
 
 
@@ -79,7 +79,7 @@ import { ref, onMounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
 import TabBar from '@/components/TabBar.vue'
 import { useRecordStore } from '@/stores/recordStore'
-import { exportData, importData, downloadBackup, mergeData } from '@/api/backup'
+import { exportData, importData, downloadBackup, mergeData, isNative, pickBackupFile } from '@/api/backup'
 
 const recordStore = useRecordStore()
 const archivableCount = ref(0)
@@ -108,18 +108,56 @@ async function handleExport() {
   const data = await exportData()
   const result = await downloadBackup(data)
   if (result === 'shared') {
-    showToast('已分享备份文件')
+    showToast('已导出，请在弹出面板中选择保存位置')
+  } else if (result === 'shared-fallback') {
+    // 文件已写入应用缓存，但系统分享不可用
+    showToast('备份已生成，但无法调起分享面板')
   } else if (result === 'saved') {
     showToast('备份已保存')
+  } else if (result === 'failed') {
+    showToast('导出失败，请重试')
   } else {
     showToast('请在弹出的窗口中保存文件')
   }
 }
 
-
+/** 解析备份内容并执行合并导入（APK 与网页版共用） */
+async function runMergeImport(content: string) {
+  try {
+    const data = JSON.parse(content)
+    if (!data.version || !data.records) {
+      showToast('无效的备份文件')
+      return
+    }
+    await showConfirmDialog({
+      title: '导入数据',
+      message: '将合并备份数据到当前账本（自动去重，不会丢失现有数据）',
+      confirmButtonText: '合并导入',
+      confirmButtonColor: 'var(--primary)'
+    })
+    const result = await mergeData(data)
+    showToast(`导入完成：${result.records} 条记录，${result.categories} 个分类，${result.books} 个账本`)
+    setTimeout(() => location.reload(), 1500)
+  } catch (err: any) {
+    showToast(err.message || '导入失败')
+  }
+}
 
 async function handleImport() {
-  // 打开浏览器原生文件选择页面（绕过小米 PWA WebView 限制）
+  // APK 环境：调系统文件选择器
+  if (isNative) {
+    try {
+      const content = await pickBackupFile()
+      if (content === null) return // 用户取消
+      await runMergeImport(content)
+    } catch (err: any) {
+      if (String(err?.message || '').includes('cancel')) return
+      showToast(err.message || '读取文件失败')
+    }
+    return
+  }
+
+  // 网页环境：沿用原有弹窗方案（绕过部分手机浏览器的 file input 限制）
   window.open('import.html', '_blank', 'width=400,height=500')
 }
 
@@ -136,26 +174,10 @@ function openInBrowser() {
 }
 
 function setupImportListener() {
+  // 网页环境专用：import.html 弹窗通过 postMessage 回传文件内容
   window.addEventListener('message', async (e) => {
     if (e.data?.type === 'import-backup') {
-      try {
-        const data = JSON.parse(e.data.content)
-        if (!data.version || !data.records) {
-          showToast('无效的备份文件')
-          return
-        }
-        await showConfirmDialog({
-          title: '导入数据',
-          message: '将合并备份数据到当前账本（自动去重，不会丢失现有数据）',
-          confirmButtonText: '合并导入',
-          confirmButtonColor: 'var(--primary)'
-        })
-        const result = await mergeData(data)
-        showToast(`导入完成：${result.records} 条记录，${result.categories} 个分类，${result.books} 个账本`)
-        setTimeout(() => location.reload(), 1500)
-      } catch (err: any) {
-        showToast(err.message || '导入失败')
-      }
+      await runMergeImport(e.data.content)
     }
   })
 }

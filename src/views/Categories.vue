@@ -79,16 +79,28 @@
         <template v-else>
           <div class="form-section">
             <label class="form-label">名称</label>
-            <input v-model="formName" class="form-input" placeholder="分类名称" maxlength="8" />
+            <input
+              ref="nameInputRef"
+              v-model="formName"
+              @compositionend="syncNameFromDom"
+              class="form-input"
+              placeholder="分类名称"
+              maxlength="8"
+            />
           </div>
           <div class="form-section" v-if="formParentId">
             <label class="form-label">默认金额（选填）</label>
-            <input v-model="formDefaultAmount" class="form-input" placeholder="如：3000" type="number" />
+            <input
+              v-model="formDefaultAmount"
+              class="form-input"
+              placeholder="如：3000"
+              type="number"
+            />
           </div>
           <div class="form-section">
             <label class="form-label">图标</label>
             <div class="icon-grid">
-              <div v-for="icon in iconOptions" :key="icon" class="icon-option" :class="{ selected: formIcon === icon }" @click="formIcon = icon">{{ icon }}</div>
+              <div v-for="icon in iconOptions" :key="icon" class="icon-option" :class="{ selected: formIcon === icon }" @click="selectIcon(icon)">{{ icon }}</div>
             </div>
           </div>
         </template>
@@ -113,6 +125,7 @@ const formParentId = ref<number | null>(null)
 const formName = ref('')
 const formIcon = ref('📦')
 const formDefaultAmount = ref('')
+const nameInputRef = ref<HTMLInputElement | null>(null)
 
 const filteredParents = computed(() =>
   categoryStore.categories
@@ -124,6 +137,25 @@ const iconOptions = ['🍜','🚗','🛒','🏠','🎮','💊','📚','📱','�
 
 function getChildren(parentId: number) {
   return categoryStore.getChildCategories(parentId)
+}
+
+// 移动端（尤其 Android WebView）里，原生 input 的 v-model 在以下场景可能同步不上：
+//   1. 中文输入法拼音组合中（composition 未结束）
+//   2. 某些输入法的自动填充/联想不派发标准 input 事件
+// 处理方式：仍保留 v-model（避免手动改 value 打断输入法组合、导致光标跳尾丢字），
+// 额外在 compositionend / blur 时补一次同步，并在保存前再做 DOM 兜底读取。
+function syncNameFromDom() {
+  const domVal = nameInputRef.value?.value
+  if (domVal !== undefined && domVal !== formName.value) {
+    formName.value = domVal
+  }
+}
+
+// 选择图标前先同步一次名称，否则 formIcon 变化触发重渲染时，
+// 会用尚未同步的空 formName 覆盖掉输入框里已输入的文本（表现为"选了图标名字就没了"）。
+function selectIcon(icon: string) {
+  syncNameFromDom()
+  formIcon.value = icon
 }
 
 function openAddModal(parentId: number | null = null) {
@@ -147,6 +179,10 @@ function openEditModal(cat: Category) {
 }
 
 async function handleSave() {
+  // 兜底：保存前再从 DOM 读一次，覆盖输入法没派发 input 事件的情况。
+  // 必须在下面的名称校验之前执行，否则会出现"明明输入了却提示请输入名称"。
+  syncNameFromDom()
+
   // 内置分类：只更新默认金额
   if (builtinEditing.value) {
     if (formDefaultAmount.value) {
