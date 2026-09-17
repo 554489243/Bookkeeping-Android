@@ -19,9 +19,9 @@
     <div class="page-content">
       <!-- 父分类列表 -->
       <div class="parent-group" v-for="parent in filteredParents" :key="parent.id">
-        <div class="parent-header" :style="{ borderLeftColor: getCategoryColor(parent.name).bg }">
+        <div class="parent-header" :style="{ borderLeftColor: colorOf(parent).bg }">
           <span class="parent-icon">{{ parent.icon }}</span>
-          <span class="parent-name" :style="{ color: getCategoryColor(parent.name).text }">{{ parent.name }}</span>
+          <span class="parent-name" :style="{ color: colorOf(parent).text }">{{ parent.name }}</span>
           <span v-if="parent.builtin" class="builtin-tag">内置</span>
           <div class="parent-actions">
             <button class="p-action" @click="openAddModal(parent.id)">
@@ -38,7 +38,7 @@
         <!-- 子分类列表 -->
         <div class="child-list" v-if="getChildren(parent.id!).length > 0">
           <div class="child-item" v-for="child in getChildren(parent.id!)" :key="child.id">
-            <span class="child-icon" :style="{ background: getCategoryColor(child.name).light }">{{ child.icon }}</span>
+            <span class="child-icon" :style="{ background: colorOf(child).light }">{{ child.icon }}</span>
             <span class="child-name">{{ child.name }}</span>
             <span v-if="child.builtin" class="builtin-tag child">内置</span>
             <span v-if="child.defaultAmount" class="child-default">¥{{ (child.defaultAmount / 100).toFixed(0) }}</span>
@@ -103,6 +103,33 @@
               <div v-for="icon in iconOptions" :key="icon" class="icon-option" :class="{ selected: formIcon === icon }" @click="selectIcon(icon)">{{ icon }}</div>
             </div>
           </div>
+          <div class="form-section">
+            <label class="form-label">
+              颜色
+              <span v-if="formColorInherited" class="label-hint">跟随上级</span>
+            </label>
+            <div class="color-grid">
+              <div
+                v-for="c in colorOptions"
+                :key="c"
+                class="color-option"
+                :class="{ selected: formColor === c }"
+                :style="{ background: c }"
+                @click="selectColor(c)"
+              >
+                <van-icon v-if="formColor === c" name="success" size="16" color="#fff" />
+              </div>
+              <!-- 清除自定义色，恢复按名称匹配的默认色 -->
+              <div
+                class="color-option reset"
+                :class="{ selected: !formColor }"
+                @click="selectColor('')"
+              >
+                <van-icon v-if="!formColor" name="success" size="16" color="#fff" />
+                <span v-else class="reset-glyph">A</span>
+              </div>
+            </div>
+          </div>
         </template>
       </div>
     </van-popup>
@@ -113,7 +140,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { showConfirmDialog, showToast } from 'vant'
 import { useCategoryStore } from '@/stores/categoryStore'
-import { getCategoryColor } from '@/utils/colors'
+import { resolveCategoryColor } from '@/utils/colors'
 import { Category } from '@/api/db'
 
 const categoryStore = useCategoryStore()
@@ -124,8 +151,25 @@ const builtinEditing = ref(false)
 const formParentId = ref<number | null>(null)
 const formName = ref('')
 const formIcon = ref('📦')
+const formColor = ref('')
 const formDefaultAmount = ref('')
 const nameInputRef = ref<HTMLInputElement | null>(null)
+
+/** 供选色器使用的预设色板（与账本一致） */
+const colorOptions = ['#1989fa', '#07c160', '#ff976a', '#ee0a24', '#b37feb', '#36cfc9', '#597ef7', '#ffd666']
+
+/** 当前未选色、但父分类有色 —— 提示"跟随上级" */
+const formColorInherited = computed(() => {
+  if (formColor.value) return false
+  if (!formParentId.value) return false
+  const parent = categoryStore.categories.find(c => c.id === formParentId.value)
+  return !!parent?.color
+})
+
+/** 按分类对象取色（自定义色 > 继承父色 > 名称匹配内置色表） */
+function colorOf(cat: Category) {
+  return resolveCategoryColor(cat, categoryStore.categories)
+}
 
 const filteredParents = computed(() =>
   categoryStore.categories
@@ -158,12 +202,20 @@ function selectIcon(icon: string) {
   formIcon.value = icon
 }
 
+// 同上：选颜色也会触发重渲染，必须先同步名称。
+// 传空字符串表示"恢复默认色"（清除自定义颜色）。
+function selectColor(color: string) {
+  syncNameFromDom()
+  formColor.value = color
+}
+
 function openAddModal(parentId: number | null = null) {
   editingId.value = null
   builtinEditing.value = false
   formParentId.value = parentId
   formName.value = ''
   formIcon.value = '📦'
+  formColor.value = ''
   formDefaultAmount.value = ''
   showModal.value = true
 }
@@ -174,6 +226,7 @@ function openEditModal(cat: Category) {
   formParentId.value = cat.parentId || null
   formName.value = cat.name
   formIcon.value = cat.icon
+  formColor.value = cat.color || ''
   formDefaultAmount.value = cat.defaultAmount ? (cat.defaultAmount / 100).toFixed(0) : ''
   showModal.value = true
 }
@@ -220,6 +273,8 @@ async function handleSave() {
     sort: maxSort + 1,
     builtin: false,
     parentId: formParentId.value || undefined,
+    // 空字符串表示未选自定义色 → 存 undefined，退回按名称匹配的默认配色
+    color: formColor.value || undefined,
     ...(formParentId.value && formDefaultAmount.value ? { defaultAmount: Math.round(parseFloat(formDefaultAmount.value) * 100) } : {}),
   }
 
@@ -472,5 +527,51 @@ onMounted(async () => {
 .icon-option.selected {
   background: var(--primary-light);
   box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* 颜色选择器（与账本页保持一致） */
+.label-hint {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+.color-option {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.color-option.selected {
+  border-color: var(--text);
+  transform: scale(1.1);
+}
+/* 恢复默认色：白底 + 斜线，视觉上区别于彩色圆点 */
+.color-option.reset {
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+}
+.color-option.reset.selected {
+  border: 3px solid var(--text);
+  background: var(--primary-light);
+}
+.reset-glyph {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 </style>

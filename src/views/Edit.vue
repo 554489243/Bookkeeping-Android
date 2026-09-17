@@ -78,7 +78,7 @@
             :key="cat.id"
             class="cat-parent-chip"
             :class="{ selected: selectedParentCategory === cat.id || (!selectedParentCategory && selectedCategory === cat.id) }"
-            :style="(selectedParentCategory === cat.id || (!selectedParentCategory && selectedCategory === cat.id)) ? { background: getCategoryColor(cat.name).light, borderColor: getCategoryColor(cat.name).bg, color: getCategoryColor(cat.name).text } : {}"
+            :style="(selectedParentCategory === cat.id || (!selectedParentCategory && selectedCategory === cat.id)) ? { background: catColor(cat).light, borderColor: catColor(cat).bg, color: catColor(cat).text } : {}"
             @click="onParentClick(cat)"
           >
             <span class="cat-parent-icon">{{ cat.icon }}</span>
@@ -92,11 +92,11 @@
             :key="cat.id"
             class="cat-cell"
             :class="{ selected: selectedCategory === cat.id }"
-            :style="selectedCategory === cat.id ? { background: getCategoryColor(cat.name).light, borderColor: getCategoryColor(cat.name).bg } : {}"
+            :style="selectedCategory === cat.id ? { background: catColor(cat).light, borderColor: catColor(cat).bg } : {}"
             @click="onChildClick(cat)"
           >
-            <div class="cat-icon-box" :style="selectedCategory === cat.id ? { background: getCategoryColor(cat.name).bg } : { background: getCategoryColor(cat.name).light }">
-              <span class="cat-emoji" :style="selectedCategory === cat.id ? { color: '#fff' } : { color: getCategoryColor(cat.name).text }">{{ cat.icon }}</span>
+            <div class="cat-icon-box" :style="selectedCategory === cat.id ? { background: catColor(cat).bg } : { background: catColor(cat).light }">
+              <span class="cat-emoji" :style="selectedCategory === cat.id ? { color: '#fff' } : { color: catColor(cat).text }">{{ cat.icon }}</span>
             </div>
             <span class="cat-label">{{ cat.name }}</span>
           </div>
@@ -259,7 +259,7 @@ import { useCategoryStore } from '@/stores/categoryStore'
 import { useBookStore } from '@/stores/bookStore'
 import { today } from '@/utils/date'
 import { yuanToCents } from '@/utils/format'
-import { getCategoryColor } from '@/utils/colors'
+import { resolveCategoryColor } from '@/utils/colors'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -267,6 +267,11 @@ const router = useRouter()
 const recordStore = useRecordStore()
 const categoryStore = useCategoryStore()
 const bookStore = useBookStore()
+
+/** 分类配色（自定义色 > 继承父分类色 > 名称匹配内置色表） */
+function catColor(cat: { name: string; color?: string; parentId?: number }) {
+  return resolveCategoryColor(cat, categoryStore.categories)
+}
 
 const isEdit = computed(() => !!route.params.id)
 const editId = computed(() => route.params.id ? Number(route.params.id) : null)

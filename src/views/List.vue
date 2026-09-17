@@ -140,7 +140,7 @@ import { useRecordStore } from '@/stores/recordStore'
 import { useCategoryStore } from '@/stores/categoryStore'
 import { useBookStore } from '@/stores/bookStore'
 import { formatAmount } from '@/utils/format'
-import { getCategoryColor } from '@/utils/colors'
+import { resolveCategoryColor, getCategoryColor } from '@/utils/colors'
 import { formatDate, formatDateWeekday } from '@/utils/date'
 import TabBar from '@/components/TabBar.vue'
 import BookSelector from '@/components/BookSelector.vue'
@@ -322,7 +322,8 @@ function secondaryName(id: number) {
 
 function categoryColor(id: number) {
   const cat = categoryStore.getById(id)
-  return cat ? getCategoryColor(cat.name) : getCategoryColor('其他')
+  // 优先用分类的自定义色（含继承父分类色），退回按名称匹配的内置色表
+  return cat ? resolveCategoryColor(cat, categoryStore.categories) : getCategoryColor('其他')
 }
 
 async function handleDelete(id: number) {

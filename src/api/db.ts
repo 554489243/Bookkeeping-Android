@@ -21,6 +21,12 @@ export interface Category {
   parentId?: number
   defaultAmount?: number
   builtin?: boolean
+  /**
+   * 自定义颜色（十六进制，如 '#1989fa'）。
+   * 可选字段 —— 旧数据没有这个字段，走颜色表按名称匹配的默认逻辑，无需数据迁移。
+   * 子分类未单独设色时，继承父分类的 color。
+   */
+  color?: string
 }
 
 export interface Book {

@@ -91,7 +91,7 @@ import { useRecordStore } from '@/stores/recordStore'
 import { useCategoryStore } from '@/stores/categoryStore'
 import { useBookStore } from '@/stores/bookStore'
 import { formatAmount } from '@/utils/format'
-import { getCategoryColor } from '@/utils/colors'
+import { getCategoryColor, resolveCategoryColor } from '@/utils/colors'
 import { getWeekRange, getYearRange } from '@/utils/date'
 import { getCategoryStatsByDateRange, getTrendByDateRange } from '@/api/records'
 import TabBar from '@/components/TabBar.vue'
@@ -255,7 +255,7 @@ async function renderCharts() {
     parentMap.forEach((amount, parentId) => {
       const cat = categoryStore.getById(parentId)
       if (cat && amount > 0) {
-        const color = getCategoryColor(cat.name).bg
+        const color = resolveCategoryColor(cat, categoryStore.categories).bg
         pieData.push({ name: cat.name, value: amount, itemStyle: { color } })
         legendData.push({ categoryId: parentId, name: `${cat.icon} ${cat.name}`, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0, color })
       }
@@ -310,7 +310,7 @@ async function renderCharts() {
     parentMap.forEach((amount, parentId) => {
       const cat = categoryStore.getById(parentId)
       if (cat && amount > 0) {
-        const color = getCategoryColor(cat.name).bg
+        const color = resolveCategoryColor(cat, categoryStore.categories).bg
         pieData.push({ name: cat.name, value: amount, itemStyle: { color } })
         legendData.push({ categoryId: parentId, name: `${cat.icon} ${cat.name}`, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0, color })
       }

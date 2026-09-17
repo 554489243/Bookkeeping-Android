@@ -106,9 +106,62 @@ const MISC_COLOR: CategoryColor = PALETTE.gray
 
 /**
  * 获取分类颜色（优先匹配子分类，再匹配父分类，最后返回默认）
+ * @deprecated 仅按名称匹配，无法反映用户自定义颜色。请改用 resolveCategoryColor。
  */
 export function getCategoryColor(name: string): CategoryColor {
   return CHILD_COLORS[name] || CATEGORY_COLORS[name] || MISC_COLOR
+}
+
+/** 把十六进制色转成 rgba 字符串 */
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+  const n = parseInt(full, 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** 把十六进制色按比例压暗，用于 text 色（保证在浅底上可读） */
+function darken(hex: string, ratio = 0.35): string {
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+  const n = parseInt(full, 16)
+  const r = Math.round(((n >> 16) & 255) * (1 - ratio))
+  const g = Math.round(((n >> 8) & 255) * (1 - ratio))
+  const b = Math.round((n & 255) * (1 - ratio))
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * 由单个十六进制色派生出完整的分类配色。
+ * bg = 原色（图标底色/边框色）；text = 压暗版（浅底上的文字）；light = 10% 透明版（浅色背景）
+ */
+export function colorFromHex(hex: string): CategoryColor {
+  return {
+    bg: hex,
+    text: darken(hex),
+    light: hexToRgba(hex, 0.12),
+  }
+}
+
+/**
+ * 解析分类的最终配色：
+ *   1. 分类自己设了 color → 用它派生
+ *   2. 子分类没设 → 继承父分类的 color
+ *   3. 都没有 → 退回按名称匹配的内置色表（内置分类观感保持原样）
+ */
+export function resolveCategoryColor(
+  cat: { name: string; color?: string; parentId?: number },
+  allCategories: { id?: number; color?: string }[] = []
+): CategoryColor {
+  if (cat.color) return colorFromHex(cat.color)
+  if (cat.parentId) {
+    const parent = allCategories.find(c => c.id === cat.parentId)
+    if (parent?.color) return colorFromHex(parent.color)
+  }
+  return getCategoryColor(cat.name)
 }
 
 /**
