@@ -1,0 +1,29 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+android/app/build/
+android/build/
+android/.gradle/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/capacitor-cordova-android-plugins/
+
+# 本地工具链（JDK / Android SDK，仅本机使用，不提交）
+.toolchain/
+
+# 签名密钥（绝对不能提交！）
+*.keystore
+*.jks
+android/app/release.keystore
+KEYS/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# 日志
+*.log

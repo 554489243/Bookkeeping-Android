@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>导入数据</title>
+  <style>
+    body{display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#f5f6f8}
+    .box{text-align:center;padding:40px;background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:320px}
+    .emoji{font-size:48px;margin-bottom:12px}
+    h3{margin:0 0 8px;font-size:18px;color:#333}
+    .hint{font-size:13px;color:#999;margin-bottom:20px}
+    .btn{display:inline-block;padding:14px 28px;background:#1989fa;color:#fff;border-radius:8px;font-size:16px;cursor:pointer}
+    input[type=file]{display:none}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="emoji">📥</div>
+    <h3>选择备份文件</h3>
+    <div class="hint">请选择之前导出的 .json 备份文件</div>
+    <label class="btn">
+      <input type="file" accept=".json" id="fi">
+      点击选择文件
+    </label>
+  </div>
+  <script>
+    document.getElementById('fi').addEventListener('change',function(e){
+      var f=e.target.files[0]
+      if(!f)return
+      var r=new FileReader()
+      r.onload=function(x){
+        window.opener.postMessage({type:'import-backup',content:x.target.result},'*')
+        window.close()
+      }
+      r.readAsText(f)
+    })
+  </script>
+</body>
+</html>
