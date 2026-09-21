@@ -288,7 +288,8 @@ export async function pickBackupFile(): Promise<string | null> {
     })
     return typeof readResult.data === 'string'
       ? readResult.data
-      : base64ToUtf8(readResult.data as string)
+      // Capacitor 的 readFile 类型把 data 标为 string | Blob，但指定 UTF8 编码时实际返回 string
+      : base64ToUtf8(readResult.data as unknown as string)
   }
 
   throw new Error('无法读取所选文件')
