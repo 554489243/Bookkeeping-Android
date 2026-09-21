@@ -56,14 +56,14 @@
           <div class="label">用户手册</div>
           <div class="arrow">›</div>
         </div>
-        <div class="menu-item" @click="showToast('记账本 v1.4.0\nVue3 + Vant4 + Dexie.js')">
+        <div class="menu-item" @click="showToast('记账本 v1.4.1\nVue3 + Vant4 + Dexie.js')">
           <div class="icon">ℹ️</div>
           <div class="label">关于</div>
           <div class="arrow">›</div>
         </div>
       </div>
 
-      <div class="version-tag">v1.4.0 · Vue3 + Vant4 + Dexie.js</div>
+      <div class="version-tag">v1.4.1 · Vue3 + Vant4 + Dexie.js</div>
     </div>
 
 
