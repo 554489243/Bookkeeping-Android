@@ -40,11 +40,25 @@ export interface Book {
   createdAt: number
 }
 
+export interface Todo {
+  id?: number
+  content: string
+  type: 'money' | 'life' | 'work' | 'note' | 'health' | 'study'
+  priority: 0 | 1 | 2
+  dueDate: string
+  done: boolean
+  doneAt?: string
+  /** 已忽略：不删掉但也不再计入未完成/过期，列表里划线展示 */
+  ignored?: boolean
+  createdAt: string
+}
+
 class BookkeepingDB extends Dexie {
   records!: Table<RecordItem>
   records_history!: Table<RecordItem>
   categories!: Table<Category>
   books!: Table<Book>
+  todos!: Table<Todo>
 
   constructor() {
     super('BookkeepingDB')
@@ -194,6 +208,14 @@ class BookkeepingDB extends Dexie {
       records_history: '++id, type, categoryId, bookId, date, createdAt',
       categories: '++id, type, sort, parentId',
       books: '++id, name, sort, isDefault'
+    })
+    // v8：新增待办表。纯增量升级，现有四张表的数据不受影响。
+    this.version(8).stores({
+      records: '++id, type, categoryId, bookId, date, createdAt',
+      records_history: '++id, type, categoryId, bookId, date, createdAt',
+      categories: '++id, type, sort, parentId',
+      books: '++id, name, sort, isDefault',
+      todos: '++id, type, priority, dueDate, done, doneAt, createdAt'
     })
   }
 

@@ -1,5 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import dayjs from 'dayjs'
+import 'dayjs/locale/zh-cn'
 import App from './App.vue'
 import router from './router'
 import {
@@ -24,6 +26,9 @@ import './styles/global.css'
 import { maintainArchive } from './api/records'
 import { autoBackup } from './api/backup'
 import { useThemeStore } from './stores/themeStore'
+
+// 全局中文语言包：保证任何页面（含直接打开待办页）dddd 都输出中文星期
+dayjs.locale('zh-cn')
 
 // 启动时自动归档旧数据（静默）
 maintainArchive()

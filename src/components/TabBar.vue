@@ -30,6 +30,7 @@ const router = useRouter()
 const tabs = [
   { path: '/', icon: 'records', label: '明细' },
   { path: '/stats', icon: 'bar-chart-o', label: '统计' },
+  { path: '/todos', icon: 'todo-list-o', label: '待办' },
   { path: '/profile', icon: 'contact-o', label: '我的' },
 ]
 

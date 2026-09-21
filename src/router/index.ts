@@ -11,6 +11,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/categories', name: 'categories', component: () => import('@/views/Categories.vue') },
   { path: '/manual', name: 'manual', component: () => import('@/views/Manual.vue') },
   { path: '/theme', name: 'theme', component: () => import('@/views/ThemeSettings.vue') },
+  { path: '/todos', name: 'todos', component: () => import('@/views/Todos.vue') },
 ]
 
 const router = createRouter({

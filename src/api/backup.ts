@@ -15,7 +15,7 @@ import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import { FilePicker } from '@capawesome/capacitor-file-picker'
-import { db, RecordItem, Category, Book } from './db'
+import { db, RecordItem, Category, Book, Todo } from './db'
 
 export interface BackupData {
   version: number
@@ -24,6 +24,7 @@ export interface BackupData {
   records_history: RecordItem[]
   categories: Category[]
   books: Book[]
+  todos: Todo[]
 }
 
 /** 是否运行在原生 App（APK）环境 */
@@ -33,20 +34,22 @@ export const isNative = Capacitor.isNativePlatform()
  * 导出所有数据为 JSON 对象
  */
 export async function exportData(): Promise<BackupData> {
-  const [records, records_history, categories, books] = await Promise.all([
+  const [records, records_history, categories, books, todos] = await Promise.all([
     db.records.toArray(),
     db.records_history.toArray(),
     db.categories.toArray(),
-    db.books.toArray()
+    db.books.toArray(),
+    db.todos.toArray()
   ])
 
   return {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     records,
     records_history,
     categories,
-    books
+    books,
+    todos
   }
 }
 
@@ -62,7 +65,7 @@ export async function mergeData(data: BackupData): Promise<{ records: number; ca
 
   const result = { records: 0, categories: 0, books: 0 }
 
-  await db.transaction('rw', db.records, db.records_history, db.categories, db.books, async () => {
+  await db.transaction('rw', db.records, db.records_history, db.categories, db.books, db.todos, async () => {
     // 分类：跳过已存在的
     if (data.categories?.length) {
       const existing = await db.categories.toArray()
@@ -93,6 +96,10 @@ export async function mergeData(data: BackupData): Promise<{ records: number; ca
     if (data.records_history?.length) {
       await db.records_history.bulkPut(data.records_history)
     }
+    // 待办：按 ID 合并
+    if (data.todos?.length) {
+      await db.todos.bulkPut(data.todos)
+    }
   })
 
   return result
@@ -106,16 +113,18 @@ export async function importData(data: BackupData): Promise<void> {
     throw new Error('无效的备份文件')
   }
 
-  await db.transaction('rw', db.records, db.records_history, db.categories, db.books, async () => {
+  await db.transaction('rw', db.records, db.records_history, db.categories, db.books, db.todos, async () => {
     await db.records.clear()
     await db.records_history.clear()
     await db.categories.clear()
     await db.books.clear()
+    await db.todos.clear()
 
     if (data.records?.length) await db.records.bulkAdd(data.records)
     if (data.records_history?.length) await db.records_history.bulkAdd(data.records_history)
     if (data.categories?.length) await db.categories.bulkAdd(data.categories)
     if (data.books?.length) await db.books.bulkAdd(data.books)
+    if (data.todos?.length) await db.todos.bulkAdd(data.todos)
   })
 }
 

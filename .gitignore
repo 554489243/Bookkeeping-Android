@@ -3,6 +3,7 @@ node_modules/
 
 # 构建产物
 dist/
+vite.config.ts.timestamp-*
 android/app/build/
 android/build/
 android/.gradle/
